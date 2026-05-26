@@ -1,4 +1,4 @@
-export type Category = "people" | "companies" | "concepts" | "projects" | "daily";
+export type Category = "people" | "companies" | "concepts" | "projects" | "daily" | "sync" | "push" | "pull" | "syncwiki" | "search";
 
 export interface ParsedMessage {
   category: Category;
@@ -13,6 +13,18 @@ export interface ParsedMessage {
 }
 
 const PREFIX_MAP: { prefix: string; category: Category }[] = [
+  // 命令类指令（优先匹配）
+  { prefix: "@同步wiki", category: "syncwiki" },
+  { prefix: "@syncwiki", category: "syncwiki" },
+  { prefix: "@同步", category: "sync" },
+  { prefix: "@sync", category: "sync" },
+  { prefix: "@推送", category: "push" },
+  { prefix: "@push", category: "push" },
+  { prefix: "@拉取", category: "pull" },
+  { prefix: "@pull", category: "pull" },
+  { prefix: "@搜索", category: "search" },
+  { prefix: "@search", category: "search" },
+  // 知识分类
   { prefix: "@人", category: "people" },
   { prefix: "@person", category: "people" },
   { prefix: "@公司", category: "companies" },
@@ -33,6 +45,9 @@ function toSlug(name: string): string {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 }
+
+/** 命令类 category 集合 */
+const COMMAND_CATEGORIES = new Set<Category>(["sync", "push", "pull", "syncwiki", "search"]);
 
 /** 获取今天的日期 slug */
 function todaySlug(): string {
@@ -70,7 +85,19 @@ export function parseMessage(text: string): ParsedMessage {
     if (!trimmed.startsWith(prefix)) continue;
 
     const rest = trimmed.slice(prefix.length).trim();
-    // 用 `-` 或 `：` 或 `:` 分隔名称和内容
+
+    // 命令类指令：整个 rest 作为参数，不做分隔
+    if (COMMAND_CATEGORIES.has(category)) {
+      return {
+        category,
+        slug: "",
+        content: rest,
+        title: rest,
+        tags: [],
+      };
+    }
+
+    // 知识分类：用 `-` 或 `：` 或 `:` 分隔名称和内容
     const sepMatch = rest.match(/^(.+?)(?:\s*[-：:]\s*)([\s\S]+)$/);
 
     if (sepMatch) {

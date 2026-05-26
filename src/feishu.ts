@@ -1,8 +1,13 @@
 import * as lark from "@larksuiteoapi/node-sdk";
 import { existsSync, mkdirSync, writeFileSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseMessage } from "./parser";
+import { parseMessage, type ParsedMessage } from "./parser";
 import { writeToVault } from "./writer";
+import { syncCalendar } from "./sync/calendar";
+import { pushToFeishu } from "./sync/push";
+import { pullFromFeishu } from "./sync/pull";
+import { syncToWiki } from "./sync/wiki";
+import { searchMessages } from "./sync/search";
 
 let client: lark.Client;
 let appAccessToken: string = "";
@@ -239,6 +244,35 @@ export async function handleMessage(data: any, vaultPath: string) {
       if (!text) return;
 
       const parsed = parseMessage(text);
+
+      // 命令类指令路由
+      if (parsed.category === "sync") {
+        const result = await syncCalendar(client, vaultPath);
+        await replyMessage(message.message_id, result);
+        return;
+      }
+      if (parsed.category === "push") {
+        const result = await pushToFeishu(client, vaultPath, parsed.content);
+        await replyMessage(message.message_id, result);
+        return;
+      }
+      if (parsed.category === "pull") {
+        const result = await pullFromFeishu(client, vaultPath, parsed.content);
+        await replyMessage(message.message_id, result);
+        return;
+      }
+      if (parsed.category === "syncwiki") {
+        const result = await syncToWiki(client, vaultPath);
+        await replyMessage(message.message_id, result);
+        return;
+      }
+      if (parsed.category === "search") {
+        const result = await searchMessages(client, vaultPath, parsed.content);
+        await replyMessage(message.message_id, result);
+        return;
+      }
+
+      // 知识类消息 → 写入 vault
       const relativePath = writeToVault(vaultPath, parsed);
 
       const preview = parsed.content
@@ -250,7 +284,7 @@ export async function handleMessage(data: any, vaultPath: string) {
     }
 
     // 其他消息类型
-    await replyMessage(message.message_id, "目前支持文字、图片、语音和文件哦");
+    await replyMessage(message.message_id, "目前支持文字、图片、语音和文件哦\n\n指令：\n@同步 - 同步日历/会议\n@推送 <路径> - 推送到飞书文档\n@拉取 <URL> - 从飞书文档拉取\n@同步wiki - 同步到飞书知识库\n@搜索 <关键词> - 搜索消息");
   } catch (err) {
     console.error("处理消息失败:", err);
     // 尽量回复用户，告知处理失败
