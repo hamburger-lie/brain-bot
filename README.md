@@ -29,6 +29,8 @@ bun install
 
 ## 配置
 
+> 首次使用？请先阅读 [飞书机器人接入教程](docs/feishu-setup.md)
+
 复制 `.env.example` 为 `.env`，填入飞书应用凭证：
 
 ```bash
