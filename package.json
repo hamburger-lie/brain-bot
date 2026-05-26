@@ -1,0 +1,13 @@
+{
+  "name": "brain-bot",
+  "version": "0.1.0",
+  "description": "飞书 Bot → Obsidian Vault 自动记录服务",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "@larksuiteoapi/node-sdk": "^1.36.0"
+  }
+}
