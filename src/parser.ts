@@ -13,22 +13,22 @@ export interface ParsedMessage {
 }
 
 const PREFIX_MAP: { prefix: string; category: Category }[] = [
-  // 命令类指令（优先匹配）
-  { prefix: "@同步wiki", category: "syncwiki" },
-  { prefix: "@syncwiki", category: "syncwiki" },
-  { prefix: "@同步", category: "sync" },
-  { prefix: "@sync", category: "sync" },
-  { prefix: "@推送", category: "push" },
-  { prefix: "@push", category: "push" },
-  { prefix: "@拉取", category: "pull" },
-  { prefix: "@pull", category: "pull" },
-  { prefix: "@搜索", category: "search" },
-  { prefix: "@search", category: "search" },
-  { prefix: "@整理", category: "organize" },
-  { prefix: "@organize", category: "organize" },
-  { prefix: "@摘要", category: "summary" },
-  { prefix: "@summary", category: "summary" },
-  // 知识分类
+  // 命令类指令（/ 前缀，优先匹配）
+  { prefix: "/同步wiki", category: "syncwiki" },
+  { prefix: "/syncwiki", category: "syncwiki" },
+  { prefix: "/同步", category: "sync" },
+  { prefix: "/sync", category: "sync" },
+  { prefix: "/推送", category: "push" },
+  { prefix: "/push", category: "push" },
+  { prefix: "/拉取", category: "pull" },
+  { prefix: "/pull", category: "pull" },
+  { prefix: "/搜索", category: "search" },
+  { prefix: "/search", category: "search" },
+  { prefix: "/整理", category: "organize" },
+  { prefix: "/organize", category: "organize" },
+  { prefix: "/摘要", category: "summary" },
+  { prefix: "/summary", category: "summary" },
+  // 知识分类（@ 前缀）
   { prefix: "@人", category: "people" },
   { prefix: "@person", category: "people" },
   { prefix: "@公司", category: "companies" },
@@ -83,7 +83,7 @@ function extractTags(text: string): string[] {
  * 支持用 `-` 或 `：` 分隔标题和正文。
  */
 export function parseMessage(text: string): ParsedMessage {
-  const trimmed = text.trim();
+  const trimmed = text.trim().replace(/^／/, "/");
 
   for (const { prefix, category } of PREFIX_MAP) {
     if (!trimmed.startsWith(prefix)) continue;

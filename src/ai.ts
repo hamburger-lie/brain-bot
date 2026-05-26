@@ -1,3 +1,5 @@
+import type { KnowledgeItem } from "./sync/inbox-organizer";
+
 const BASE_URL = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com";
 const API_KEY = process.env.DEEPSEEK_API_KEY || "";
 
@@ -120,4 +122,45 @@ export async function suggestWikilinks(
     }
   } catch {}
   return [];
+}
+
+/** 从 daily 内容中抽取应该分流到各目录的知识条目 */
+export async function extractKnowledgeItems(content: string): Promise<KnowledgeItem[]> {
+  const result = await chat(
+    `你是一个个人知识库整理助手。用户会把日常碎片记录在 Obsidian daily 笔记里。
+请从内容中抽取值得沉淀的条目，并分类到以下目录：
+- people: 人物
+- companies: 公司
+- concepts: 想法、概念、灵感
+- sources: 文章、视频、播客、书籍、网页等来源
+- projects: 正在做的项目
+- analysis: 决策、复盘、判断、策略
+
+只返回 JSON 数组，不要解释。每项格式：
+{
+  "category": "people|companies|concepts|sources|projects|analysis",
+  "title": "适合作为文件名的短标题",
+  "summary": "这条内容应该沉淀到对应页面的一句话摘要",
+  "sourceText": "daily 原文中可以被替换成链接的原始词或短语",
+  "tags": ["标签1", "标签2"]
+}
+
+规则：
+- 不要抽取太泛的词，比如 今天、文章、项目、想法。
+- sourceText 必须真实出现在原文中。
+- title 尽量短，适合长期复用。
+- 不确定就少抽取，不要硬凑。
+- 最多返回 12 项。`,
+    content
+  );
+
+  try {
+    const jsonMatch = result.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) return [];
+    const parsed = JSON.parse(jsonMatch[0]) as KnowledgeItem[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed;
+  } catch {
+    return [];
+  }
 }

@@ -14,13 +14,13 @@
 
 | 指令 | 说明 | 示例 |
 |------|------|------|
-| `@同步` / `@sync` | 同步飞书日历和会议到日记 | `@同步` |
-| `@推送` / `@push` | 推送本地 markdown 到飞书文档 | `@推送 people/zhang-san.md` |
-| `@拉取` / `@pull` | 从飞书文档拉取内容到本地 | `@拉取 https://xxx.feishu.cn/docx/xxx` |
-| `@同步wiki` / `@syncwiki` | 同步 vault 到飞书知识库 | `@同步wiki` |
-| `@搜索` / `@search` | 搜索本地知识库和飞书消息 | `@搜索 张三` |
-| `@整理` / `@organize` | AI 自动打标签和建双向链接 | `@整理` 或 `@整理 people/zhang-san.md` |
-| `@摘要` / `@summary` | AI 生成知识摘要 | `@摘要`、`@摘要 本周`、`@摘要 本月` |
+| `/同步` / `/sync` | 同步飞书日历和会议到日记 | `/同步` |
+| `/推送` / `/push` | 推送本地 markdown 到飞书文档 | `/推送 people/zhang-san.md` |
+| `/拉取` / `/pull` | 从飞书文档拉取内容到本地 | `/拉取 https://xxx.feishu.cn/docx/xxx` |
+| `/同步wiki` / `/syncwiki` | 同步 vault 到飞书知识库 | `/同步wiki` |
+| `/搜索` / `/search` | 搜索本地知识库和飞书消息 | `/搜索 张三` |
+| `/整理` / `/organize` | AI 从 daily 自动分流到 people/companies/concepts/sources/projects/analysis，并生成整理报告 | `/整理` 或 `/整理 2026-05-26` |
+| `/摘要` / `/summary` | AI 生成知识摘要 | `/摘要`、`/摘要 本周`、`/摘要 本月` |
 
 ### 消息分类
 
@@ -61,6 +61,7 @@ cp .env.example .env
 | `WIKI_SPACE_ID` | 飞书知识库 Space ID（可选） |
 | `DEEPSEEK_API_KEY` | DeepSeek API Key（AI 整理/摘要功能） |
 | `DEEPSEEK_BASE_URL` | DeepSeek API 地址（默认 https://api.deepseek.com） |
+| `AUTO_ORGANIZE_TIME` | 每天自动整理时间，格式 `HH:MM`，留空则关闭 |
 
 ### 飞书应用权限
 
@@ -98,7 +99,8 @@ src/
     ├── pull.ts       # 飞书文档 → Obsidian
     ├── wiki.ts       # Obsidian → 飞书知识库
     ├── search.ts     # 本地 + 飞书消息检索
-    ├── organize.ts   # AI 自动整理（打标签、建链接）
+    ├── inbox-organizer.ts # daily 自动分流和整理报告
+    ├── organize.ts   # AI 整理入口
     └── summary.ts    # AI 知识摘要生成
 ```
 
