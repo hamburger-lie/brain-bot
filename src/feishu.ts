@@ -8,6 +8,8 @@ import { pushToFeishu } from "./sync/push";
 import { pullFromFeishu } from "./sync/pull";
 import { syncToWiki } from "./sync/wiki";
 import { searchMessages } from "./sync/search";
+import { organizeNotes } from "./sync/organize";
+import { generateSummary } from "./sync/summary";
 
 let client: lark.Client;
 let appAccessToken: string = "";
@@ -271,6 +273,16 @@ export async function handleMessage(data: any, vaultPath: string) {
         await replyMessage(message.message_id, result);
         return;
       }
+      if (parsed.category === "organize") {
+        const result = await organizeNotes(vaultPath, parsed.content || undefined);
+        await replyMessage(message.message_id, result);
+        return;
+      }
+      if (parsed.category === "summary") {
+        const result = await generateSummary(vaultPath, parsed.content || undefined);
+        await replyMessage(message.message_id, result);
+        return;
+      }
 
       // 知识类消息 → 写入 vault
       const relativePath = writeToVault(vaultPath, parsed);
@@ -284,7 +296,7 @@ export async function handleMessage(data: any, vaultPath: string) {
     }
 
     // 其他消息类型
-    await replyMessage(message.message_id, "目前支持文字、图片、语音和文件哦\n\n指令：\n@同步 - 同步日历/会议\n@推送 <路径> - 推送到飞书文档\n@拉取 <URL> - 从飞书文档拉取\n@同步wiki - 同步到飞书知识库\n@搜索 <关键词> - 搜索消息");
+    await replyMessage(message.message_id, "目前支持文字、图片、语音和文件哦\n\n指令：\n@同步 - 同步日历/会议\n@推送 <路径> - 推送到飞书文档\n@拉取 <URL> - 从飞书文档拉取\n@同步wiki - 同步到飞书知识库\n@搜索 <关键词> - 搜索消息\n@整理 - AI自动打标签和建链接\n@摘要 - 生成知识摘要（今日/本周/本月）");
   } catch (err) {
     console.error("处理消息失败:", err);
     // 尽量回复用户，告知处理失败

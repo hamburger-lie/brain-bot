@@ -1,4 +1,4 @@
-export type Category = "people" | "companies" | "concepts" | "projects" | "daily" | "sync" | "push" | "pull" | "syncwiki" | "search";
+export type Category = "people" | "companies" | "concepts" | "projects" | "daily" | "sync" | "push" | "pull" | "syncwiki" | "search" | "organize" | "summary";
 
 export interface ParsedMessage {
   category: Category;
@@ -24,6 +24,10 @@ const PREFIX_MAP: { prefix: string; category: Category }[] = [
   { prefix: "@pull", category: "pull" },
   { prefix: "@搜索", category: "search" },
   { prefix: "@search", category: "search" },
+  { prefix: "@整理", category: "organize" },
+  { prefix: "@organize", category: "organize" },
+  { prefix: "@摘要", category: "summary" },
+  { prefix: "@summary", category: "summary" },
   // 知识分类
   { prefix: "@人", category: "people" },
   { prefix: "@person", category: "people" },
@@ -47,7 +51,7 @@ function toSlug(name: string): string {
 }
 
 /** 命令类 category 集合 */
-const COMMAND_CATEGORIES = new Set<Category>(["sync", "push", "pull", "syncwiki", "search"]);
+const COMMAND_CATEGORIES = new Set<Category>(["sync", "push", "pull", "syncwiki", "search", "organize", "summary"]);
 
 /** 获取今天的日期 slug */
 function todaySlug(): string {

@@ -1,6 +1,6 @@
 # brain-bot
 
-飞书 Bot → Obsidian Vault 自动记录服务。通过飞书私聊发送消息，自动分类写入 Obsidian 知识库，并支持与飞书文档、知识库的双向同步。
+飞书 Bot → Obsidian Vault 自动记录服务。通过飞书私聊发送消息，自动分类写入 Obsidian 知识库，并支持与飞书文档、知识库的双向同步和 AI 智能整理。
 
 ## 功能
 
@@ -19,6 +19,8 @@
 | `@拉取` / `@pull` | 从飞书文档拉取内容到本地 | `@拉取 https://xxx.feishu.cn/docx/xxx` |
 | `@同步wiki` / `@syncwiki` | 同步 vault 到飞书知识库 | `@同步wiki` |
 | `@搜索` / `@search` | 搜索本地知识库和飞书消息 | `@搜索 张三` |
+| `@整理` / `@organize` | AI 自动打标签和建双向链接 | `@整理` 或 `@整理 people/zhang-san.md` |
+| `@摘要` / `@summary` | AI 生成知识摘要 | `@摘要`、`@摘要 本周`、`@摘要 本月` |
 
 ### 消息分类
 
@@ -57,6 +59,8 @@ cp .env.example .env
 | `VAULT_PATH` | Obsidian vault 路径 |
 | `PORT` | 服务端口（默认 3000） |
 | `WIKI_SPACE_ID` | 飞书知识库 Space ID（可选） |
+| `DEEPSEEK_API_KEY` | DeepSeek API Key（AI 整理/摘要功能） |
+| `DEEPSEEK_BASE_URL` | DeepSeek API 地址（默认 https://api.deepseek.com） |
 
 ### 飞书应用权限
 
@@ -87,12 +91,15 @@ src/
 ├── feishu.ts         # 飞书 API 封装（消息处理、媒体下载、指令路由）
 ├── parser.ts         # 消息解析（前缀路由、标签提取）
 ├── writer.ts         # Obsidian vault 写入（frontmatter 生成）
+├── ai.ts             # DeepSeek API 封装（标签生成、关联发现、摘要）
 └── sync/
     ├── calendar.ts   # 日历/会议同步
     ├── push.ts       # Obsidian → 飞书文档
     ├── pull.ts       # 飞书文档 → Obsidian
     ├── wiki.ts       # Obsidian → 飞书知识库
-    └── search.ts     # 本地 + 飞书消息检索
+    ├── search.ts     # 本地 + 飞书消息检索
+    ├── organize.ts   # AI 自动整理（打标签、建链接）
+    └── summary.ts    # AI 知识摘要生成
 ```
 
 使用飞书 WebSocket 长连接，无需公网 URL。
