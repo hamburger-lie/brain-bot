@@ -2,6 +2,7 @@ import * as lark from "@larksuiteoapi/node-sdk";
 import { existsSync, mkdirSync, writeFileSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseMessage, type ParsedMessage } from "./parser";
+import { shouldProcessMessage } from "./dedupe";
 import { writeToVault } from "./writer";
 import { syncCalendar } from "./sync/calendar";
 import { pushToFeishu } from "./sync/push";
@@ -14,6 +15,7 @@ import { generateSummary } from "./sync/summary";
 let client: lark.Client;
 let appAccessToken: string = "";
 let tokenExpireAt: number = 0;
+let lastChatId: string = "";
 
 export function initFeishuClient(appId: string, appSecret: string) {
   client = new lark.Client({ appId, appSecret });
@@ -67,6 +69,19 @@ async function replyMessage(messageId: string, text: string) {
   } catch (err) {
     console.error("回复消息失败:", err);
   }
+}
+
+/** 主动发送飞书消息 */
+async function sendTextToChat(chatId: string, text: string) {
+  if (!client) return;
+  await client.im.message.create({
+    params: { receive_id_type: "chat_id" },
+    data: {
+      receive_id: chatId,
+      msg_type: "text",
+      content: JSON.stringify({ text }),
+    },
+  });
 }
 
 /** 下载飞书图片并保存到 vault */
@@ -178,6 +193,13 @@ export async function handleMessage(data: any, vaultPath: string) {
   try {
     const message = data.message;
     if (!message) return;
+    if (message.message_id && !shouldProcessMessage(message.message_id)) {
+      console.log(`[去重] 忽略重复消息事件: id=${message.message_id}`);
+      return;
+    }
+    if (message.chat_id) {
+      lastChatId = message.chat_id;
+    }
 
     // 图片消息
     if (message.message_type === "image") {
@@ -242,7 +264,25 @@ export async function handleMessage(data: any, vaultPath: string) {
     // 文本消息
     if (message.message_type === "text") {
       const contentObj = JSON.parse(message.content);
-      const text = contentObj.text?.trim();
+      let text = contentObj.text?.trim() || "";
+
+      // 处理飞书 mention 格式：@机器人 会被格式化为 @_user_x 占位符
+      // 去掉 @_user_x 占位符，只保留实际文本
+      if (text.startsWith("@_user_")) {
+        text = text.replace(/^@_user_\d+\s*/, "").trim();
+      }
+      // 也处理 mentions 数组中的 @机器人 情况
+      const mentions = message.mentions;
+      if (mentions && mentions.length > 0) {
+        for (const m of mentions) {
+          if (m.key && m.name) {
+            // 把 @_user_x 替换为空，或替换为实际名称
+            text = text.replace(m.key, "").trim();
+          }
+        }
+      }
+
+      console.log(`[调试] 收到文本: "${text}", 原始content: ${message.content}`);
       if (!text) return;
 
       const parsed = parseMessage(text);
@@ -274,7 +314,9 @@ export async function handleMessage(data: any, vaultPath: string) {
         return;
       }
       if (parsed.category === "organize") {
+        console.log(`[指令] /整理 被触发, content="${parsed.content}"`);
         const result = await organizeNotes(vaultPath, parsed.content || undefined);
+        console.log(`[指令] /整理 结果: ${result.slice(0, 100)}`);
         await replyMessage(message.message_id, result);
         return;
       }
@@ -296,7 +338,7 @@ export async function handleMessage(data: any, vaultPath: string) {
     }
 
     // 其他消息类型
-    await replyMessage(message.message_id, "目前支持文字、图片、语音和文件哦\n\n指令：\n@同步 - 同步日历/会议\n@推送 <路径> - 推送到飞书文档\n@拉取 <URL> - 从飞书文档拉取\n@同步wiki - 同步到飞书知识库\n@搜索 <关键词> - 搜索消息\n@整理 - AI自动打标签和建链接\n@摘要 - 生成知识摘要（今日/本周/本月）");
+    await replyMessage(message.message_id, "目前支持文字、图片、语音和文件哦\n\n指令（用 / 开头）：\n/同步 - 同步日历/会议\n/推送 <路径> - 推送到飞书文档\n/拉取 <URL> - 从飞书文档拉取\n/同步wiki - 同步到飞书知识库\n/搜索 <关键词> - 搜索消息\n/整理 - AI自动打标签和建链接\n/摘要 - 生成知识摘要（今日/本周/本月）");
   } catch (err) {
     console.error("处理消息失败:", err);
     // 尽量回复用户，告知处理失败
@@ -309,6 +351,42 @@ export async function handleMessage(data: any, vaultPath: string) {
       console.error("回复失败通知也出错:", replyErr);
     }
   }
+}
+
+/** 可选：按 .env 的 AUTO_ORGANIZE_TIME=HH:MM 每天自动整理一次 */
+export function startDailyOrganizeScheduler(vaultPath: string) {
+  const time = process.env.AUTO_ORGANIZE_TIME || "";
+  if (!time) return;
+  if (!/^\d{2}:\d{2}$/.test(time)) {
+    console.warn(`[定时整理] AUTO_ORGANIZE_TIME 格式无效: ${time}，应为 HH:MM`);
+    return;
+  }
+
+  let lastRunDate = "";
+  setInterval(async () => {
+    const now = new Date();
+    const current = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const today = todayDate();
+    if (current !== time || lastRunDate === today) return;
+
+    lastRunDate = today;
+    try {
+      const result = await organizeNotes(vaultPath, today);
+      if (lastChatId) {
+        await sendTextToChat(lastChatId, `每日自动整理\n\n${result}`);
+      } else {
+        console.log("[定时整理] 尚未记录 chat_id，整理结果仅输出到终端:\n", result);
+      }
+    } catch (err) {
+      const message = `每日自动整理失败: ${err instanceof Error ? err.message : String(err)}`;
+      console.error("[定时整理]", message);
+      if (lastChatId) {
+        await sendTextToChat(lastChatId, message);
+      }
+    }
+  }, 30 * 1000);
+
+  console.log(`[定时整理] 已启用，每天 ${time} 自动整理 daily`);
 }
 
 /** 创建飞书事件分发器 */

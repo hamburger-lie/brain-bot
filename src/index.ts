@@ -1,5 +1,5 @@
 import * as lark from "@larksuiteoapi/node-sdk";
-import { initFeishuClient, createEventDispatcher } from "./feishu";
+import { initFeishuClient, createEventDispatcher, startDailyOrganizeScheduler } from "./feishu";
 
 // 加载 .env（Bun 原生支持）
 const APP_ID = process.env.FEISHU_APP_ID || "";
@@ -20,6 +20,7 @@ initFeishuClient(APP_ID, APP_SECRET);
 
 // 创建事件分发器
 const eventDispatcher = createEventDispatcher(VAULT_PATH);
+startDailyOrganizeScheduler(VAULT_PATH);
 
 // WebSocket 连接（无需公网 URL）
 const wsClient = new lark.WSClient({
